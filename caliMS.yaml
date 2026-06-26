@@ -1,0 +1,5 @@
+wavelength_A: 0.7293  # X-ray wavelength in Angstroms (17000.445632798575 eV)
+image_size: [981, 1043]  # [horizontal, vertical] in pixels
+pixel_size_um: 172.0  # pixel size in microns
+beam_position: [618.99, 677.61]  # beam position in pixels
+distance: 0.235  # sample to detector distance in meters

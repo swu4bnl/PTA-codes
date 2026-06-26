@@ -1762,7 +1762,7 @@ class circular_average_q2I_fit_sorted(Protocols.circular_average_q2I_fit):
             # Sort ascending by q (x_center value)
             peaks_sorted = sorted(peaks, key=lambda p: p['x_center']['value'])
 
-            # Write sorted peaks back into results (same dict reference → also updates lines.results)
+            # Write sorted peaks back into results
             for i, peak in enumerate(peaks_sorted):
                 results['{}_x_center{}'.format(fit_name, i + 1)] = peak['x_center']
                 results['{}_prefactor{}'.format(fit_name, i + 1)] = peak['prefactor']
@@ -1774,70 +1774,42 @@ class circular_average_q2I_fit_sorted(Protocols.circular_average_q2I_fit):
             results['{}_d0'.format(fit_name)] = results['{}_d01'.format(fit_name)]
             results['{}_grain_size'.format(fit_name)] = results['{}_grain_size1'.format(fit_name)]
 
-        class circular_average_q2I_fit_FWHM(circular_average_q2I_fit_sorted):
-            """Same Gaussian peak fit as circular_average_q2I_fit_sorted, but also
-            reports the FWHM (in q, Å⁻¹) for each peak: FWHM = 2*sqrt(2*ln2)*sigma."""
+        return lines
 
-            def _fit(self, line, results, **run_args):
-                # Run the normal (sorted) fit; this populates sigma1, sigma2, ... in `results`
-                lines = super()._fit(line, results, **run_args)
 
-                fit_name = 'fit_peaks'
-                FWHM_factor = 2.0 * np.sqrt(2.0 * np.log(2.0))  # ≈ 2.35482
+class circular_average_q2I_fit_FWHM(circular_average_q2I_fit_sorted):
+    """Same Gaussian peak fit as circular_average_q2I_fit_sorted, but also
+    reports the FWHM (in q, A^-1) for each peak: FWHM = 2*sqrt(2*ln2)*sigma."""
 
-                num_curves = run_args.get('num_curves', 1)
-                for i in range(num_curves):
-                    sigma_res = results.get('{}_sigma{}'.format(fit_name, i + 1))
-                    if sigma_res is None:
-                        continue
+    def _fit(self, line, results, **run_args):
+        # Run the normal (sorted) fit; this populates sigma1, sigma2, ... in `results`
+        lines = super()._fit(line, results, **run_args)
 
-                    sigma = sigma_res['value']
-                    sigma_err = sigma_res.get('error')
+        fit_name = 'fit_peaks'
+        FWHM_factor = 2.0 * np.sqrt(2.0 * np.log(2.0))  # ~ 2.35482
 
-                    fwhm = FWHM_factor * sigma
-                    if sigma_err is None or np.isnan(sigma_err):
-                        fwhm_err = 0
-                    else:
-                        fwhm_err = FWHM_factor * sigma_err  # linear scaling, so error scales the same way
+        num_curves = run_args.get('num_curves', 1)
+        for i in range(num_curves):
+            sigma_res = results.get('{}_sigma{}'.format(fit_name, i + 1))
+            if sigma_res is None:
+                continue
 
-                    results['{}_fwhm{}'.format(fit_name, i + 1)] = {'value': fwhm, 'error': fwhm_err}
+            sigma = sigma_res['value']
+            sigma_err = sigma_res.get('error')
 
-                # Single-peak alias (points at the lowest-q peak, matching the d0/grain_size aliases)
-                if '{}_fwhm1'.format(fit_name) in results:
-                    results['{}_fwhm'.format(fit_name)] = results['{}_fwhm1'.format(fit_name)]
+            fwhm = FWHM_factor * sigma
+            if sigma_err is None or np.isnan(sigma_err):
+                fwhm_err = 0
+            else:
+                fwhm_err = FWHM_factor * sigma_err  # linear scaling
 
-    class circular_average_q2I_fit_FWHM(circular_average_q2I_fit_sorted):
-        """Same Gaussian peak fit as circular_average_q2I_fit_sorted, but also            reports the FWHM (in q, Å⁻¹) for each peak: FWHM = 2*sqrt(2*ln2)*sigma."""
+            results['{}_fwhm{}'.format(fit_name, i + 1)] = {'value': fwhm, 'error': fwhm_err}
 
-        def _fit(self, line, results, **run_args):
-            # Run the normal (sorted) fit; this populates sigma1, sigma2, ... in `results`
-            lines = super()._fit(line, results, **run_args)
+        # Single-peak alias (points at the lowest-q peak)
+        if '{}_fwhm1'.format(fit_name) in results:
+            results['{}_fwhm'.format(fit_name)] = results['{}_fwhm1'.format(fit_name)]
 
-            fit_name = 'fit_peaks'
-            FWHM_factor = 2.0 * np.sqrt(2.0 * np.log(2.0))  # ≈ 2.35482
-
-            num_curves = run_args.get('num_curves', 1)
-            for i in range(num_curves):
-                sigma_res = results.get('{}_sigma{}'.format(fit_name, i + 1))
-                if sigma_res is None:
-                    continue
-
-                sigma = sigma_res['value']
-                sigma_err = sigma_res.get('error')
-
-                fwhm = FWHM_factor * sigma
-                if sigma_err is None or np.isnan(sigma_err):
-                    fwhm_err = 0
-                else:
-                    fwhm_err = FWHM_factor * sigma_err  # linear scaling, so error scales the same way
-
-                results['{}_fwhm{}'.format(fit_name, i + 1)] = {'value': fwhm, 'error': fwhm_err}
-
-            # Single-peak alias (points at the lowest-q peak, matching the d0/grain_size aliases)
-            if '{}_fwhm1'.format(fit_name) in results:
-                results['{}_fwhm'.format(fit_name)] = results['{}_fwhm1'.format(fit_name)]
-
-            return lines
+        return lines
 
 
 from scipy.signal import savgol_filter, find_peaks, peak_widths
@@ -2187,6 +2159,8 @@ def autonomous_result(xml_file, clean=True, verbosity=3):
 ## CARLY To change
 #################### WAXS CALIBRATION
 import yaml
+
+# /nsls2/data/cms/proposals/2026-1/pass-319051/experiments/2_PTA/data
 
 with open('caliMS.yaml', 'r') as f:  # Carly
     cfg = yaml.safe_load(f)
@@ -2569,41 +2543,87 @@ def get_analysis_result(infile, protocol=FITTING_PLAN, verbosity=3):
     # xml_file = infile.replace('.tiff', '.xml').replace('../waxs/raw/', '/analysis_swaxs/results/')
     xml_file = infile.replace('.tiff', '.xml').replace('./maxs/raw/', '../maxs/analysis/results/')
 
-    # Mock Experiment: Read analysis value from .csv
-    if False:
-        # Example file name HW_C01_40_Tc_x0.000_th0.300_10.00s_2248944_000000_waxs.xml
-        parts = infile.split('_')
-        composition = int(parts[-8])
-        x_pos = float(parts[-6].replace('x', ''))
 
-        mockfile = '/nsls2/data3/cms/shared/config/bluesky/profile_collection/users/2026-1/KChen-Wiegart/2026C1/mockData/HW_CrCuNiCr_fit_peaks.csv'
+    ################################################################################################
+
+
+
+    ## Mock Experiment: Read analysis value from .csv for fixed composition
+
+
+    if True:  # was: if False — enabled for the time/position mock
+        # Beamline filename example: ..._x12.183_th0.200_1260.9s_2048356_000000_waxs.xml
+        # Parse TIME and X-POSITION from the filename (position represents temperature)
+        parts =infile.split('_')
+        time = int(parts[-8]) #fix this
+        x_pos = float(parts[-6].replace('x', '')) #fix this
+
+        # Load scattered mock data: columns time, x_position, fwhm, fwhm_err
+        mockfile = '/nsls2/auto-storage/cms/shared/config/bluesky/profile_collection/users/2026-2/KCWiegart/mockData/CrCuNiCr_insitu_NEW.csv'  # <-- set the real beamline path
         df = pd.read_csv(mockfile)
 
-        df.columns = [40, 45, 50, 55, 60]
-        from scipy.interpolate import interp1d
-        x = np.arange(df.shape[1])  # sample index
-        y = np.arange(df.shape[0])  # scan index
-        y = y * 0.4
+        # drop failed-fit rows so they don't distort the interpolation
+        df = df[(df['fwhm'] > 0.05) & (df['fwhm'] < 0.13)]
 
-        # Fine y grid for the lookup table
-        y_fine = np.linspace(y.min(), y.max(), 1000)
+        # Build 2D interpolators over (x_position, time)
+        from scipy.interpolate import LinearNDInterpolator
+        pts = df[['x_position', 'time']].values
+        interp_fwhm = LinearNDInterpolator(pts, df['fwhm'].values)
+        interp_err = LinearNDInterpolator(pts, df['fwhm_err'].values)
 
-        # Build interpolated lookup table: rows = fine y positions, cols = samples
-        lut = pd.DataFrame(index=y_fine, columns=df.columns, dtype=float)
+        # interpolate FWHM and its error at the requested (position, time)
+        value = float(interp_fwhm(x_pos, t_val))
+        error = float(interp_err(x_pos, t_val))
 
-        for col in df.columns:
-            f = interp1d(y, df[col].values, kind='cubic')
-            lut[col] = f(y_fine)
 
-            interp_per_sample = {
-                col: interp1d(y, df[col].values, kind='cubic')
-                for col in df.columns
-            }
 
-        # composition = 'HW-C02-CrCuNiCr_th0.30'
-        # x_pos = 30
-        value = interp_per_sample[composition](x_pos)
-        error = value * 0.05
+        # random fallback only when asked outside the measured region (NaN)
+        if np.isnan(value):
+            value = np.random.uniform(0.09, 0.13)
+            print(f"Warning: Requested (x={x_pos}, t={t_val}) outside measured region. Using random fallback value {value:.4f}.")   
+        if np.isnan(error) or error <= 0:
+            error = value * 0.05
+
+
+    ############################################################################
+    # # Mock Experiment: Read analysis value from .csv for combinatorial
+    # if False:
+    #     # Example file name HW_C01_40_Tc_x0.000_th0.300_10.00s_2248944_000000_waxs.xml
+    #     parts = infile.split('_')
+    #     composition = int(parts[-8])
+    #     x_pos = float(parts[-6].replace('x', ''))
+    #
+            # 2026-2
+            # /nsls2/auto-storage/cms/shared/config/bluesky/profile_collection/users/2026-2/KCWiegart/mockData
+
+    #     mockfile = '/nsls2/data3/cms/shared/config/bluesky/profile_collection/users/2026-1/KChen-Wiegart/2026C1/mockData/HW_CrCuNiCr_fit_peaks.csv'
+    #     df = pd.read_csv(mockfile)
+    #
+    #     df.columns = [40, 45, 50, 55, 60]
+    #     from scipy.interpolate import interp1d
+    #     x = np.arange(df.shape[1])  # sample index
+    #     y = np.arange(df.shape[0])  # scan index
+    #     y = y * 0.4
+    #
+    #     # Fine y grid for the lookup table
+    #     y_fine = np.linspace(y.min(), y.max(), 1000)
+    #
+    #     # Build interpolated lookup table: rows = fine y positions, cols = samples
+    #     lut = pd.DataFrame(index=y_fine, columns=df.columns, dtype=float)
+    #
+    #     for col in df.columns:
+    #         f = interp1d(y, df[col].values, kind='cubic')
+    #         lut[col] = f(y_fine)
+    #
+    #         interp_per_sample = {
+    #             col: interp1d(y, df[col].values, kind='cubic')
+    #             for col in df.columns
+    #         }
+    #
+    #     # composition = 'HW-C02-CrCuNiCr_th0.30'
+    #     # x_pos = 30
+    #     value = interp_per_sample[composition](x_pos)
+    #     error = value * 0.05
 
     try:
         # Extract data from XML
