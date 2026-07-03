@@ -1786,8 +1786,14 @@ class circular_average_q2I_fit_FWHM(circular_average_q2I_fit_sorted):
         lines = super()._fit(line, results, **run_args)
 
         fit_name = 'fit_peaks'
-        FWHM_factor = 2.0 * np.sqrt(2.0 * np.log(2.0))  # ~ 2.35482
+        #FWHM_factor = 2.0 * np.sqrt(2.0 * np.log(2.0))  # ~ 2.35482
+        
+        #USE INSTEAD so we can use width at 80%, 50%, 20% of peak height by altering "frac" CZ
 
+        frac = run_args.get('width_fraction', 0.50)
+        FWHM_factor = 2.0 * np.sqrt(2.0 * np.log(1.0 / frac))
+
+        
         num_curves = run_args.get('num_curves', 1)
         for i in range(num_curves):
             sigma_res = results.get('{}_sigma{}'.format(fit_name, i + 1))
@@ -2291,7 +2297,14 @@ protocols = [
     ##circular_average_q2I_fit_custom('circular_average_q2I_fit', plot_range=[1, 4.5, 0, None], q0 = qp1, fit_range=[qp1-dqp1, qp1+dqp1], num_curves=1),
     #circular_average_q2I_fit_sorted('circular_average_q2I_fit_sorted', plot_range=[3.3, 3.7, 0, None], q0=qp1,
     #                                fit_range=[qp1 - dqp1, qp1 + dqp1], num_curves=1),
-    circular_average_q2I_fit_FWHM('circular_average_q2I_fit_FWHM', plot_range=[2.8, 3.3, 0, None], q0=3.07, fit_range=[3.07-0.08, 3.07+0.08], num_curves=1),
+    
+    circular_average_q2I_fit_FWHM('circular_average_q2I_fit_FWHM', plot_range=[2.8, 3.3, 0, None], q0=3.07,
+    fit_range=[3.07 - 0.08, 3.07 + 0.08], num_curves=1),      
+    
+    ###changed protocol to include changing width fraction CZ
+    circular_average_q2I_fit_FWHM('circular_average_q2I_fit_FWHM', plot_range=[2.8, 3.3, 0, None],
+    q0=3.07, fit_range=[3.07-0.08, 3.07+0.08], num_curves=1, width_fraction=0.20),
+    
     # Protocols.databroker_extract(constraints={'measure_type':'measure'}, timestamp=True, sectino='start'),
     Protocols.metadata_extract(patterns=patterns),
 ]
