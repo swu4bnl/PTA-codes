@@ -1,0 +1,23 @@
+# Ignore large/generated runtime NumPy artifacts
+*.npy
+
+# Ignore duplicated subfolders
+PTA-data-analysis-code-06252026/
+
+# Ignore runtime data folders
+maxs/
+saxs/
+
+# Ignore pixi environment files
+.pixi/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore Python cache files
+__pycache__/
+
+# Ignore vscode settings
+.vscode/
+
+
