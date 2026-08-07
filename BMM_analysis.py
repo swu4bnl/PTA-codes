@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -8,13 +9,19 @@ import glob
 import time
 from larch.io import read_ascii, read_athena
 from scipy.signal import find_peaks
+from dotenv import load_dotenv
 
 
 from tiled.client import from_uri
 client = from_uri('https://tiled.nsls2.bnl.gov')
 # dbBMM = client['bmm']['raw']
 
-dbBMM = from_uri("https://tiled.nsls2.bnl.gov/api/v1/metadata/bmm/raw", api_key='1578614050ded8f5c9503ec378ebfc41679a1510d375540ce655cc559d8400dbd2dea288')
+load_dotenv()
+TILED_API_KEY = os.getenv('TILED_API_KEY')
+if not TILED_API_KEY:
+    raise RuntimeError('TILED_API_KEY is not set. Add it to your .env file or secret store.')
+
+dbBMM = from_uri("https://tiled.nsls2.bnl.gov/api/v1/metadata/bmm/raw", api_key=TILED_API_KEY)
 
 UID_LIST = []
 
@@ -188,8 +195,6 @@ def run_BMM(scan_id, wait_time=30, energy_range=(4950, 5010), verbosity=0):
 
 
 
-
-
 ####################
 from CustomS3BMM import Queue_analyze
 q = Queue_analyze()
@@ -197,8 +202,8 @@ q = Queue_analyze()
 # while True: # The loop that waits for new instructions...
     
 #     # Check BMM, wait for new data. Once you get new data:
-#     # Get data from BMM
-#     # Do custom analysis, put data into into the right format
-#     # data = [ {...} ]
-#     data = run_BMM(-1, verbosity=0)
-#     # q.publish(data) # Send new analysis results to gpCAM
+    # Get data from BMM
+    # Do custom analysis, put data into into the right format
+    # data = [ {...} ]
+    data = run_BMM(-1, verbosity=0)
+    # q.publish(data) # Send new analysis results to gpCAM
