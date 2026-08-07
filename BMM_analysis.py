@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -8,13 +9,36 @@ import glob
 import time
 from larch.io import read_ascii, read_athena
 from scipy.signal import find_peaks
+from dotenv import load_dotenv
+
+
+# ---------------------------------------------------------------------------
+# Config helper: load Tiled credentials from the environment (or a .env file)
+# ---------------------------------------------------------------------------
+
+def get_tiled_config():
+    """Return the Tiled API key from the environment.
+
+    Loads a ``.env`` file if present (via python-dotenv), then reads the
+    ``TILED_API_KEY`` environment variable.  Raises ``RuntimeError`` with a
+    clear message when the variable is not set so that problems surface
+    immediately rather than producing cryptic authentication errors later.
+    """
+    load_dotenv()
+    api_key = os.getenv("TILED_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "TILED_API_KEY is not set.  "
+            "Add it to your environment or to a .env file in the working directory."
+        )
+    return api_key
 
 
 from tiled.client import from_uri
 client = from_uri('https://tiled.nsls2.bnl.gov')
 # dbBMM = client['bmm']['raw']
 
-dbBMM = from_uri("https://tiled.nsls2.bnl.gov/api/v1/metadata/bmm/raw", api_key='1578614050ded8f5c9503ec378ebfc41679a1510d375540ce655cc559d8400dbd2dea288')
+dbBMM = from_uri("https://tiled.nsls2.bnl.gov/api/v1/metadata/bmm/raw", api_key=get_tiled_config())
 
 UID_LIST = []
 
